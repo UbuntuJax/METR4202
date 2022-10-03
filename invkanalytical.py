@@ -31,4 +31,4 @@ def main(x,y,z):
 
 
 if __name__ == "__main__":
-    main(0.5,0.5,0.5)
+    main(100,100,100)
