@@ -9,6 +9,7 @@ import random
 
 # Always need this
 import rospy
+from numpy import *
 
 # Import message types
 from std_msgs.msg import Header
@@ -20,13 +21,41 @@ from geometry_msgs.msg import Pose
 # This one doesn't actually do it though...
 def inverse_kinematics(pose: Pose) -> JointState:
     global pub
-    # TODO: Have fun :)
+    x = pose.position[0]
+    y = pose.position[1]
+    z = pose.position[2] - L1
+    L1 = ...
+    L2 = 1
+    L3 = 1
+    L4 = 1
+    L5 = z
+    R = sqrt(x**2 + y**2)
+    L6 = R - L4
+    L7 = sqrt(L6**2 + L5**2)
+    theta5 = arctan2(L5, L6)
+    ctheta2 = (L2**2+L7**2-L3**2) / (2*L2*L7)
+    theta2_1 = arctan2(ctheta2, sqrt(1-ctheta2))
+    theta2_2 = arctan2(ctheta2, -sqrt(1-ctheta2))
+    theta2 = matrix([theta2_1, theta2_2])
+    alpha = theta2 + theta5
+    ctheta3 = (L3**2 + L2**2 - L7**2) / (2*L2*L3)
+    theta3_1 = arctan2(ctheta3, sqrt(1-ctheta3))
+    theta3_2 = arctan2(ctheta3, -sqrt(1-ctheta3))
+    theta3 = matrix([theta3_1, theta3_2])
+    theta4 = -theta3-alpha+2*pi
+    theta1 = arctan2(x, y)
+
+    theta1offset = theta1
+    theta2offset = theta2 + pi/2
+    theta3offset = theta3
+    theta4offset = theta4
+
     rospy.loginfo(f'Got desired pose\n[\n\tpos:\n{pose.position}\nrot:\n{pose.orientation}\n]')
-    pub.publish(dummy_joint_states())
+    pub.publish(create_message(theta1,theta2,theta3,theta4))
 
 
 # Funny code
-def dummy_joint_states() -> JointState:
+def create_message(theta1,theta2,theta3,theta4) -> JointState:
     # Create message of type JointState
     msg = JointState(
         # Set header with current time
@@ -34,12 +63,9 @@ def dummy_joint_states() -> JointState:
         # Specify joint names (see `controller_config.yaml` under `dynamixel_interface/config`)
         name=['joint_1', 'joint_2', 'joint_3', 'joint_4']
     )
-    # Funny code
+    
     msg.position = [
-        random.uniform(-1.5, 1.5),
-        random.uniform(-1.5, 1.5),
-        random.uniform(-1.5, 1.5),
-        random.uniform(-1.5, 1.5)
+        theta1,theta2,theta3,theta4
     ]
     return msg
 
