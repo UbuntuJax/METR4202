@@ -154,7 +154,8 @@ def hitting_luggage_wall(x, y, z, theta2, theta3, theta4):
     y_theta4 = L2*cos(theta2) + L3*cos(theta3)
     y_theta3 = L2*cos(theta2)
 
-    if (x < 100 and x > -100 and y > 57.2 and y < 62.2 and z < 50) or (z_theta3 < 50 and y_theta3 > 57.2 and y_theta3 < 62.2) or (z_theta4 < 50 and y_theta4 > 57.2 and y_theta4 < 62.2): #the area to the luggage_wall
+    if (x < 100 and x > -100 and y > 57.2 and y < 62.2 and z < 50) or (z_theta3 < 50 and y_theta3 > 57.2 and y_theta3 < 62.2) or \
+    (z_theta4 < 50 and y_theta4 > 57.2 and y_theta4 < 62.2): #the area to the luggage_wall
         return True
     else:
         return False
