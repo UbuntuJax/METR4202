@@ -1,17 +1,9 @@
 #!/usr/bin/env python3
 
-#theta1+: anticlockwise
-#theta2+: clockwise
-#theta3+: clockwise
-#theta4+: anticlockwise
-
 """
-This script publishes a set of random joint states to the dynamixel controller.
-Use this to get an idea of how to code your inverse kinematics!
+This script publishes a set of joint states to the dynamixel controller.
 """
 
-# Funny code
-import random
 
 # Always need this
 import rospy
@@ -30,8 +22,7 @@ L3 = 93.3 #mm
 L4 = 92.2 #mm
 
 
-# Your inverse kinematics function
-# This one doesn't actually do it ththeta2ugh...
+# Inverse kinematics function
 def inverse_kinematics(pose: Pose) -> JointState:
     global pub
     
@@ -54,8 +45,6 @@ def inverse_kinematics(pose: Pose) -> JointState:
     #print("cg:", cg)
     g_1 = atan2(np.sqrt(1-cg**2), cg)
     g_2 = atan2(-np.sqrt(1-cg**2), cg)
-    # g_1 = np.arccos(cg)
-    # g_2 = g_1 + np.pi/4
     #print(f"g(1)(rads):", g_1, ", g(2)(rads)", g_2)
     g = np.array([g_1, g_2])
     print("g:", g)
@@ -63,10 +52,6 @@ def inverse_kinematics(pose: Pose) -> JointState:
     print("alpha:", alpha)
     cb = (L3**2 + L2**2 - Q**2) / (2*L2*L3)
     #print("cb:", cb) yep
-    # b_1 = np.arccos((L3**2 + L2**2 - Q**2)/(2*L2*L3))
-    # b_2 = b_1 + np.pi/4
-
-    #old b1
     b_1 = atan2(np.sqrt(1-cb**2), cb)
     b_2 = atan2(-np.sqrt(1-cb**2), cb)
 
@@ -76,26 +61,20 @@ def inverse_kinematics(pose: Pose) -> JointState:
     print("c:", c)
     
     theta1 = np.arctan2(y, x)
-    # theta2 = alpha - np.pi/2 
-    # theta3 = np.pi - b 
-    # theta4 = np.pi - c
-
     theta2 = alpha - np.pi/2 
     theta3 = -np.pi + b 
     theta4 = -np.pi + c
 
     print("calculated angles:\ntheta1:", np.degrees(theta1), "theta2:", np.degrees(theta2), "theta3:", np.degrees(theta3), "theta4:", np.degrees(theta4), "\n")
 
-    #if(hitting_ground(theta2dynamixeloffset, theta3dynamixeloffset, theta4dynamixeloffset)):
-        #break out of the function, return nothing
-        #return
-
     #choose which angle to use
     theta2final,theta3final,theta4final = angle_check(theta1, theta2, theta3, theta4)
+    
+    
+    if(hitting_ground(theta2final, theta3final, theta4final)):
+        #break out of the function, return nothing
+        return
 
-    #apply negative/positive definition depending on direction of dynamixel rotation
-
-    #rospy.loginfo(f'Got desired pose\n[\n\tpos:\n{pose.position}\nrot:\n{pose.orientation}\n]')
     rospy.loginfo(f'published angles:\ntheta1: {np.degrees(theta1)}\n theta2: {np.degrees(theta2final)}\n theta3: {np.degrees(theta3final)}\n theta4: {np.degrees(theta4final)}')
     pub.publish(create_message(theta1,theta2final,theta3final,theta4final))
 
@@ -194,10 +173,6 @@ def create_message(theta1,theta2,theta3,theta4) -> JointState:
         theta1,theta2,theta3,theta4
     ]
 
-    #writing postions directly
-    # msg.position = [
-    #     np.radians(0),np.radians(0),np.radians(0),np.radians(0)
-    # ]
     return msg
 
 
