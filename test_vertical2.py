@@ -154,9 +154,12 @@ def angle_check(theta1, theta2, theta3, theta4):
     return theta2, theta3, theta4
 
 def hitting_ground(theta2, theta3, theta4):
-    z_end_effector = L2*np.cos(theta2) + L3*np.sin(theta3) + L4
-    z_theta4 = L2*np.sin(theta2) + L3*np.sin(theta3)
-    z_theta3 = L2*np.sin(theta2)
+    z_end_effector = L2*np.cos(theta2) + L3*np.sin(theta3 + theta2) - L4 + L1
+    z_theta4 = L2*np.sin(np.pi/2 - theta2) + L3*np.sin(theta3+theta2) + L1
+    z_theta3 = L2*np.sin(np.pi/2 - theta2) + L1
+
+    print(f'z_end_effector: {z_end_effector}, z_theta4: {z_theta4}, z_theta3: {z_theta3}')
+
     if z_end_effector <= 0 or z_theta4 <= 0 or z_theta3 <= 0:
         #rospy.loginfo(f'Hitting Ground')
         return True
