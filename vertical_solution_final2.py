@@ -1,25 +1,37 @@
+#!/usr/bin/env python3
+
+"""
+This script publishes a set of joint states to the dynamixel controller.
+"""
+
+
+# Always need this
+import rospy
+import numpy as np
+from math import *
+
+# Import message types
+from std_msgs.msg import Header
+from sensor_msgs.msg import JointState
+from geometry_msgs.msg import Pose
+
 #Global Length Values
 L1 = 100.0 #mm
 L2 = 114.4 #mm                                                      
 L3 = 93.3 #mm
 L4 = 92.2 #mm
 
-import numpy as np
-from math import *
 
-def inverse_kinematics(position):
+# Inverse kinematics function
+def inverse_kinematics(pose: Pose) -> JointState:
     global pub
     
-    # x = pose.position.x*1000 #m -> mm
-    # y = pose.position.y*1000 #m -> mm
-    # z = pose.position.z*1000 - L1
-
-    x = position[0]*1000 #m -> mm
-    y = position[1]*1000 #m -> mm
-    z = position[2]*1000 - L1
+    x = pose.position.x*1000 #m -> mm
+    y = pose.position.y*1000 #m -> mm
+    z = pose.position.z*1000 - L1
 
     if invalid_pose(x,y,z):
-        #rospy.loginfo(f'invalid pose')
+        rospy.loginfo(f'invalid pose')
         #break out of the function, return nothing
         return
     L5 = z + L4
@@ -45,14 +57,13 @@ def inverse_kinematics(position):
 
     print(f"b(1)(rads):", b_1, ", b(2)(rads)", b_2)
     b = np.array([b_1, b_2])
-    d = np.pi-b-alpha #marked as d
-    e = np.pi - f - np.pi/2
-    print("d:", d)
+    c = -b-alpha+2*np.pi
+    print("c:", c)
     
     theta1 = np.arctan2(y, x)
     theta2 = alpha - np.pi/2 
     theta3 = -np.pi + b 
-    theta4 = -1*(np.pi-d-e)
+    theta4 = -np.pi*(3/4) + c
 
     print("calculated angles:\ntheta1:", np.degrees(theta1), "theta2:", np.degrees(theta2), "theta3:", np.degrees(theta3), "theta4:", np.degrees(theta4), "\n")
 
@@ -69,8 +80,15 @@ def inverse_kinematics(position):
     print(f'theta1: {np.degrees(theta1)}, theta2: {np.degrees(theta2final)}, theta3: {np.degrees(theta3final)}, \
         theta4: {np.degrees(theta4final)}')
 
-    #rospy.loginfo(f'published angles:\ntheta1: {np.degrees(theta1)}\n theta2: {np.degrees(theta2final)}\n theta3: {np.degrees(theta3final)}\n theta4: {np.degrees(theta4final)}')
-    #pub.publish(create_message(theta1,theta2final,theta3final,theta4final))
+    rospy.loginfo(f'published angles:\ntheta1: {np.degrees(theta1)}\n theta2: {np.degrees(theta2final)}\n theta3: {np.degrees(theta3final)}\n theta4: {np.degrees(theta4final)}')
+    pub.publish(create_message(theta1,theta2final,theta3final,theta4final))
+    
+    if(hitting_ground(theta2final, theta3final, theta4final)):
+        #break out of the function, return nothing
+        return
+
+    rospy.loginfo(f'published angles:\ntheta1: {np.degrees(theta1)}\n theta2: {np.degrees(theta2final)}\n theta3: {np.degrees(theta3final)}\n theta4: {np.degrees(theta4final)}')
+    pub.publish(create_message(theta1,theta2final,theta3final,theta4final))
 
 def invalid_pose(x, y, z):
     x_workspace = L2 + L3 + L4
@@ -98,7 +116,7 @@ def angle_check(theta1, theta2, theta3, theta4):
     for k in range(3):
         for a in range(2):
             if k == 2:
-                critvalue = [130, -130]
+                critvalue = [110, -110]
             else:
                 critvalue = [145, -145]
             
@@ -117,7 +135,7 @@ def angle_check(theta1, theta2, theta3, theta4):
     #checking if either solution is valid (if first solution is valid, does not check the second solution)
     for i in range(3):
         if i == 2:
-            critvalue = [130, -130]
+            critvalue = [110, -110]
         else:
             critvalue = [145, -145]
 
@@ -134,7 +152,7 @@ def angle_check(theta1, theta2, theta3, theta4):
     if firstsolutioninvalid:
         for j in range(3):
             if j == 2:
-                critvalue = [130, -130]
+                critvalue = [110, -110]
             else:
                 critvalue = [140, -140]
             if thetalist[j,1] < np.radians(critvalue[0]) and thetalist[j,1] > np.radians(critvalue[1]):
@@ -154,28 +172,14 @@ def angle_check(theta1, theta2, theta3, theta4):
     return theta2, theta3, theta4
 
 def hitting_ground(theta2, theta3, theta4):
-    z_end_effector = L2*np.cos(theta2) + L3*np.sin(theta3 + theta2) - L4 + L1
-    z_theta4 = L2*np.sin(np.pi/2 - theta2) + L3*np.sin(theta3+theta2) + L1
-    z_theta3 = L2*np.sin(np.pi/2 - theta2) + L1
-
-    print(f'z_end_effector: {z_end_effector}, z_theta4: {z_theta4}, z_theta3: {z_theta3}')
-
-    if z_end_effector <= 0 or z_theta4 <= 0 or z_theta3 <= 0:
-        #rospy.loginfo(f'Hitting Ground')
+    z_end_effector = L2*np.sin(theta2) + L3*np.sin(theta3) + L4*np.sin(theta4)
+    z_theta4 = L2*np.sin(theta2) + L3*np.sin(theta3)
+    z_theta3 = L2*np.sin(theta2)
+    if z_end_effector <= -L1 or z_theta4 <= -L1 or z_theta3 <= -L1:
+        rospy.loginfo(f'Hitting Ground')
         return True
     else:
         return False
-
-# def hitting_ground(theta2, theta3, theta4):
-#     z_end_effector = L2*np.cos(theta2) + L3*np.sin(theta3) + L4
-#     z_theta4 = L2*np.sin(theta2) + L3*np.sin(theta3)
-#     z_theta3 = L2*np.sin(theta2)
-#     if z_end_effector <= -L1 or z_theta4 <= -L1 or z_theta3 <= -L1:
-#         #rospy.loginfo(f'Hitting Ground')
-#         return True
-#     else:
-#         return False
-
 
 def hitting_luggage_wall(x, y, z, theta2, theta3, theta4):
     z_end_effector = L2*np.sin(theta2) + L3*np.sin(theta3) + L4*np.sin(theta4)
@@ -191,10 +195,50 @@ def hitting_luggage_wall(x, y, z, theta2, theta3, theta4):
     else:
         return False
 
+def create_message(theta1,theta2,theta3,theta4) -> JointState:
+    # Create message of type JointState
+    msg = JointState(
+        # Set header with current time
+        header=Header(stamp=rospy.Time.now()),
+        # Specify joint names (see controller_config.yaml under dynamixel_interface/config)
+        name=['joint_1', 'joint_2', 'joint_3', 'joint_4']
+    )
+    
+    # program writing positions
+    msg.position = [
+        theta1,theta2,theta3,theta4
+    ]
+
+    #hard code angles
+    # msg.position = [
+    #     np.radians(0),np.radians(0),np.radians(0),np.radians(0)
+    # ]
+
+    return msg
 
 
+def main():
+    global pub
+    # Create publisher
+    pub = rospy.Publisher(
+        'desired_joint_states', # Topic name
+        JointState, # Message type
+        queue_size=10 # Topic size (optional)
+    )
+
+    # Create subscriber
+    sub = rospy.Subscriber(
+        'desired_pose', # Topic name
+        Pose, # Message type
+        inverse_kinematics # Callback function (required)
+    )
+
+    # Initialise node with any node name
+    rospy.init_node('metr4202_w7_prac')
+
+    # Just stops Python from exiting and executes callbacks
+    rospy.spin()
 
 
-if __name__ == "__main__":
-    position = np.array([0.13, 0, 0.025])
-    inverse_kinematics(position)
+if __name__ == '__main__':
+    main()
